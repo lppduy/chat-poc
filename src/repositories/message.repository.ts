@@ -8,7 +8,7 @@ export interface IMessageRepository {
   findByRoom(roomId: string, cursor: string | null, limit: number): Promise<MessagePage>;
 }
 
-// ── DB row type (internal) ───────────────────────────────────────────────────
+// ── DB row (internal — never exposed outside this file) ─────────────────────
 
 interface MessageRow {
   id: string;

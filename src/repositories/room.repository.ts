@@ -11,7 +11,7 @@ export interface IRoomRepository {
   getMembers(roomId: string): Promise<string[]>;
 }
 
-// ── DB row type (internal) ───────────────────────────────────────────────────
+// ── DB row (internal — never exposed outside this file) ─────────────────────
 
 interface RoomRow {
   id: string;

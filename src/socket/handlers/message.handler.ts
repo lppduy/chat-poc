@@ -1,21 +1,20 @@
-import { Server, Socket } from 'socket.io';
 import { RedisClientType } from 'redis';
 import { IMessageService } from '../../services/message.service';
 import { MessageResponseMapper } from '../../dto/response/message.response';
-import { SendMessageRequest } from '../../dto/request/send-message.request';
-import { GetHistoryRequest } from '../../dto/request/get-history.request';
 import { publish, CHAT_CHANNEL } from '../../pubsub/redis.pubsub';
 import { AppException } from '../../exceptions';
+import { TypedServer, TypedSocket } from '../index';
+import { GetHistoryRequest } from '../../dto/request/get-history.request';
 
 export function registerMessageHandler(
-  io: Server,
-  socket: Socket,
+  io: TypedServer,
+  socket: TypedSocket,
   messageService: IMessageService,
   pub: RedisClientType
 ): void {
   const userId = socket.data.userId as string;
 
-  socket.on('message:send', async (req: SendMessageRequest, ack?: Function) => {
+  socket.on('message:send', async (req, ack) => {
     try {
       // 1. persist first — source of truth
       const msg = await messageService.send(req.roomId, userId, req.content);

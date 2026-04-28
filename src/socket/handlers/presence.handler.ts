@@ -1,11 +1,11 @@
-import { Server, Socket } from 'socket.io';
 import { RedisClientType } from 'redis';
 import { IPresenceService } from '../../services/presence.service';
 import { publish, CHAT_CHANNEL } from '../../pubsub/redis.pubsub';
+import { TypedServer, TypedSocket } from '../index';
 
 export function registerPresenceHandler(
-  io: Server,
-  socket: Socket,
+  io: TypedServer,
+  socket: TypedSocket,
   presenceService: IPresenceService,
   pub: RedisClientType
 ): void {

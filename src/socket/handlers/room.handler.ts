@@ -1,17 +1,16 @@
-import { Server, Socket } from 'socket.io';
 import { IRoomService } from '../../services/room.service';
 import { RoomResponseMapper } from '../../dto/response/room.response';
-import { CreateRoomRequest, DmStartRequest } from '../../dto/request/create-room.request';
 import { AppException } from '../../exceptions';
+import { TypedServer, TypedSocket } from '../index';
 
 export function registerRoomHandler(
-  io: Server,
-  socket: Socket,
+  io: TypedServer,
+  socket: TypedSocket,
   roomService: IRoomService
 ): void {
   const userId = socket.data.userId as string;
 
-  socket.on('dm:start', async (req: DmStartRequest, ack?: Function) => {
+  socket.on('dm:start', async (req, ack) => {
     try {
       const room = await roomService.getOrCreateDirectRoom(userId, req.targetUserId);
 
@@ -31,7 +30,7 @@ export function registerRoomHandler(
     }
   });
 
-  socket.on('room:create', async (req: CreateRoomRequest, ack?: Function) => {
+  socket.on('room:create', async (req, ack) => {
     try {
       const allMembers = Array.from(new Set([userId, ...req.memberIds]));
       const room = await roomService.createGroupRoom(req.name, allMembers);
@@ -54,10 +53,10 @@ export function registerRoomHandler(
     }
   });
 
-  socket.on('room:join', async ({ roomId }: { roomId: string }, ack?: Function) => {
+  socket.on('room:join', async (req, ack) => {
     try {
-      await roomService.assertMember(roomId, userId);
-      socket.join(roomId);
+      await roomService.assertMember(req.roomId, userId);
+      socket.join(req.roomId);
       if (ack) ack({ ok: true });
     } catch (err) {
       const msg = err instanceof AppException ? err.message : 'not a member';

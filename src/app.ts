@@ -1,11 +1,18 @@
 import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
 import { config } from './config';
 import { db, connectDb } from './db/client';
 import { createRedisClients, subscribe, CHAT_CHANNEL } from './pubsub/redis.pubsub';
-import { setupSocket } from './socket';
+import { PubSubEvent } from './pubsub/types';
+import { setupSocket, TypedServer } from './socket';
+import {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from './socket/types';
+import { Server } from 'socket.io';
 
 import { RoomRepository } from './repositories/room.repository';
 import { MessageRepository } from './repositories/message.repository';
@@ -31,33 +38,37 @@ async function bootstrap(): Promise<void> {
   app.use(express.json());
 
   const httpServer = createServer(app);
-  const io = new Server(httpServer, {
+  const io = new Server<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  >(httpServer, {
     cors: { origin: '*' },
     transports: ['websocket', 'polling'],
-  });
+  }) as TypedServer;
 
   setupSocket(io, pub, { roomService, messageService, presenceService });
 
   // ── Redis Pub/Sub fan-out — runs once per instance ─────────────────────────
   await subscribe(sub, CHAT_CHANNEL, (payload) => {
-    const data = payload as Record<string, unknown>;
-    const { event, roomId, userId, msg } = data;
+    const e = payload as PubSubEvent;
 
-    switch (event) {
+    switch (e.event) {
       case 'message:new':
-        io.to(roomId as string).emit('message:new', msg);
+        io.to(e.roomId).emit('message:new', e.msg);
         break;
       case 'user:online':
-        io.emit('user:online', { userId });
+        io.emit('user:online', { userId: e.userId });
         break;
       case 'user:offline':
-        io.emit('user:offline', { userId });
+        io.emit('user:offline', { userId: e.userId });
         break;
       case 'typing:started':
-        io.to(roomId as string).emit('typing:started', { userId, roomId });
+        io.to(e.roomId).emit('typing:started', { userId: e.userId, roomId: e.roomId });
         break;
       case 'typing:stopped':
-        io.to(roomId as string).emit('typing:stopped', { userId, roomId });
+        io.to(e.roomId).emit('typing:stopped', { userId: e.userId, roomId: e.roomId });
         break;
     }
   });

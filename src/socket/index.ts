@@ -6,6 +6,15 @@ import { registerMessageHandler } from './handlers/message.handler';
 import { IRoomService } from '../services/room.service';
 import { IMessageService } from '../services/message.service';
 import { IPresenceService } from '../services/presence.service';
+import {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from './types';
+
+export type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+export type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 interface Services {
   roomService: IRoomService;
@@ -13,7 +22,7 @@ interface Services {
   presenceService: IPresenceService;
 }
 
-export function setupSocket(io: Server, pub: RedisClientType, services: Services): void {
+export function setupSocket(io: TypedServer, pub: RedisClientType, services: Services): void {
   // middleware: extract and validate userId from query param
   io.use((socket, next) => {
     const userId = socket.handshake.query.userId as string;
@@ -32,9 +41,9 @@ export function setupSocket(io: Server, pub: RedisClientType, services: Services
     // so event listeners are ready before the client can emit anything
     socket.join(`user:${userId}`);
 
-    registerPresenceHandler(io, socket, services.presenceService, pub);
-    registerRoomHandler(io, socket, services.roomService);
-    registerMessageHandler(io, socket, services.messageService, pub);
+    registerPresenceHandler(io, socket as TypedSocket, services.presenceService, pub);
+    registerRoomHandler(io, socket as TypedSocket, services.roomService);
+    registerMessageHandler(io, socket as TypedSocket, services.messageService, pub);
 
     socket.on('error', (err) => {
       console.error(`[socket] error from ${userId}:`, err.message);
