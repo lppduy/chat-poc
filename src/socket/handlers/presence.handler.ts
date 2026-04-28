@@ -12,7 +12,6 @@ export function registerPresenceHandler(
   const userId = socket.data.userId as string;
 
   presenceService.setOnline(userId, socket.id).then(() => {
-    socket.join(`user:${userId}`);
     publish(pub, CHAT_CHANNEL, { event: 'user:online', userId });
     console.log(`[presence] ${userId} online`);
   });

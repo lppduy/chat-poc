@@ -19,7 +19,9 @@ export function registerRoomHandler(
       io.to(`user:${req.targetUserId}`).socketsJoin(room.id);
 
       const response = RoomResponseMapper.fromDomain(room);
-      io.to(room.id).emit('room:created', response);
+      // emit via personal rooms — socketsJoin is async so room.id may not include bob yet
+      socket.emit('room:created', response);
+      io.to(`user:${req.targetUserId}`).emit('room:created', response);
 
       if (ack) ack({ ok: true, roomId: room.id });
     } catch (err) {
@@ -39,7 +41,10 @@ export function registerRoomHandler(
       }
 
       const response = RoomResponseMapper.fromDomain(room);
-      io.to(room.id).emit('room:created', response);
+      // emit via personal rooms — socketsJoin is async so members may not be in room.id yet
+      for (const memberId of room.members) {
+        io.to(`user:${memberId}`).emit('room:created', response);
+      }
 
       if (ack) ack({ ok: true, roomId: room.id });
     } catch (err) {

@@ -24,11 +24,13 @@ export function setupSocket(io: Server, pub: RedisClientType, services: Services
     next();
   });
 
-  io.on('connection', async (socket: Socket) => {
+  io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId as string;
     console.log(`[socket] connected: ${userId} (${socket.id})`);
 
-    await services.roomService.ensureUser(userId);
+    // join personal room and register handlers synchronously
+    // so event listeners are ready before the client can emit anything
+    socket.join(`user:${userId}`);
 
     registerPresenceHandler(io, socket, services.presenceService, pub);
     registerRoomHandler(io, socket, services.roomService);
@@ -37,5 +39,10 @@ export function setupSocket(io: Server, pub: RedisClientType, services: Services
     socket.on('error', (err) => {
       console.error(`[socket] error from ${userId}:`, err.message);
     });
+
+    // ensureUser runs in background — not blocking handler registration
+    services.roomService.ensureUser(userId).catch((err) =>
+      console.error(`[socket] ensureUser failed for ${userId}:`, err)
+    );
   });
 }
